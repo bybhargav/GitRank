@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
 from validator import path_validator
-
+from gitinfo import resolve_head
 
 if len(sys.argv) == 1:
     sys.exit("Usage: python main.py <repository_path>")
@@ -12,3 +12,5 @@ git_path = path_validator(path)
 
 if git_path is None:
     sys.exit("Error: This directory doesn't contain any .git folder")
+
+head_ref = resolve_head(git_path)

@@ -21,4 +21,3 @@ python main.py /path/to/repository
 - [ ] Read `.git/HEAD`
 - [ ] Resolve current branch
 - [ ] Parse Git objects
-```
