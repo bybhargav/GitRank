@@ -8,6 +8,8 @@ from gitinfo import (
     locate_object,
     read_object,
     decompress_object,
+    split_object,split_header ,
+    parse_header
 )
 
 # ============================================================
@@ -55,3 +57,13 @@ byte_data = read_object(object_path)
 # Git stores objects in compressed form (zlib).
 # Decompress the object to reveal its original contents.
 decompressed_data = decompress_object(byte_data)
+
+# Split the decompressed object into its header and body.
+header, body = split_object(decompressed_data)
+
+# Split the header into object type bytes and object size bytes.
+object_type_bytes, object_size_bytes = split_header(header)
+
+# Convert the header bytes into Python types.
+object_type, object_size = parse_header(object_type_bytes, object_size_bytes)
+
