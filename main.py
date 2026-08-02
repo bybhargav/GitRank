@@ -70,3 +70,6 @@ tree_byte_data = read_object(tree_object_path)
 decompressed_tree_byte = decompress_object(tree_byte_data)
 tree_header, tree_body = split_object(decompressed_tree_byte)
 #tree_metadata, tree_message = parse_body(tree_header,tree_body)
+
+print(tree_header)
+print(tree_body)
