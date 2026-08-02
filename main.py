@@ -9,7 +9,7 @@ from gitinfo import (
     read_object,
     decompress_object,
     split_object,split_header ,
-    parse_header
+    parse_header, parse_body, parse_metadata
 )
 
 # ============================================================
@@ -61,9 +61,12 @@ decompressed_data = decompress_object(byte_data)
 # Split the decompressed object into its header and body.
 header, body = split_object(decompressed_data)
 
-# Split the header into object type bytes and object size bytes.
-object_type_bytes, object_size_bytes = split_header(header)
+# Parse the object body based on its header.
+commit_metadata, commit_message  = parse_body(header,body)
 
-# Convert the header bytes into Python types.
-object_type, object_size = parse_header(object_type_bytes, object_size_bytes)
-
+tree_hash = commit_metadata["tree"] 
+tree_object_path = locate_object(git_path, tree_hash)
+tree_byte_data = read_object(tree_object_path)
+decompressed_tree_byte = decompress_object(tree_byte_data)
+tree_header, tree_body = split_object(decompressed_tree_byte)
+#tree_metadata, tree_message = parse_body(tree_header,tree_body)

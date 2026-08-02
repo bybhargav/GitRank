@@ -1,6 +1,6 @@
 from pathlib import Path
 import zlib
-
+from datetime import datetime
 
 # ============================================================
 # HEAD
@@ -71,6 +71,70 @@ def parse_header(object_type_bytes: bytes,
     object_type = object_type_bytes.decode()
     
     return object_type, object_size
+
+def parse_commit(body:bytes) -> tuple[dict,bytes]:
+    metadata_bytes, commit_message = body.split(b"\n\n", maxsplit=1)
+    parsed_metadata = parse_metadata(metadata_bytes)
+    return parsed_metadata, commit_message
+
+def parse_tree(body)-> tuple[dict,bytes]:
+    ...
+
+def parse_blob(body):
+    ... 
+
+def parse_metadata(metadata_bytes: bytes) -> dict[str, str | list[str]]:
+    parsed_metadata = {}
+    
+    for line in metadata_bytes.split(b"\n"):
+        key, value = line.split(b" ", maxsplit=1)
+
+        if key == b"parent": 
+            parent_hash = value.decode()
+            if "parents" not in parsed_metadata:
+                parsed_metadata["parents"] = []
+            parsed_metadata["parents"].append(parent_hash)
+            
+        else: 
+            parsed_metadata[key.decode()] = value.decode()
+
+    parsed_metadata["author"] = parse_identity(parsed_metadata["author"] )
+    parsed_metadata["committer"] = parse_identity(parsed_metadata["committer"])
+
+    return parsed_metadata
+
+
+def parse_body(header: bytes, body: bytes) :
+    object_type_bytes, object_size_bytes = split_header(header)
+
+    object_type, object_size = parse_header(
+        object_type_bytes,
+        object_size_bytes)
+
+    if object_type == "commit":
+        return parse_commit(body)
+
+    elif object_type == "tree":
+        return parse_tree(body)
+    
+
+
+
+def parse_identity(author):
+    author_list = author.split()
+    author_metadata = {}
+
+    dt = datetime.fromtimestamp(int(author_list[-2]))
+
+    author_metadata["name"] = " ".join(author_list[:-3])
+    author_metadata["email"] = author_list[-3]
+    author_metadata["time"] = int(author_list[-2])
+    author_metadata["datetime"] = dt.strftime("%d-%m-%Y %H:%M:%S")
+    author_metadata["time_zone"] = author_list[-1]
+
+    return author_metadata
+
+
 
 def main():
     repo = Path(".git")
