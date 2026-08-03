@@ -83,10 +83,24 @@ tree_header, tree_body = split_object(tree_object_data)
 # Parse every tree entry (mode, filename and object hash).
 tree_entries = parse_body(tree_header,tree_body)  
 
+
+# ============================================================
+# Blob Object Resolution
+# ============================================================
+#blob_object_path = locate_object(git_path, )
+
+
 # ============================================================
 # Output
 # ============================================================
 
-print(tree_entries)
-print("\n\n\n\n")
-print(commit_metadata,commit_message)
+for entry in tree_entries:
+    object_path = locate_object(git_path, entry["hash"])
+    object_bytes = read_object(object_path)
+    object_data = decompress_object(object_bytes)
+
+    header, body = split_object(object_data)
+
+    print(entry["name"])
+    print(header)
+    print()
