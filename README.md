@@ -68,7 +68,7 @@ GitRank/
 Clone the repository:
 
 ```bash
-git clone https://github.com/bysairaju/GitRank.git
+git clone https://github.com/bybhargav/GitRank.git
 cd GitRank
 ```
 

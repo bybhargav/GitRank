@@ -177,7 +177,7 @@ def parse_tree_body(tree_body: bytes) -> list[dict[str, str]]:
         # Read the raw 20-byte SHA-1 object ID.
         hash_bytes = tree_body[offset:offset + 20]
         offset += 20
-
+        
         # Convert the parsed entry into Python types.
         entries.append(
             {
@@ -205,13 +205,74 @@ def parse_mode(mode: str) -> dict[str, str]:
         "type": mode_map.get(mode, "unknown"),
     }
 
+from pathlib import Path
+
+
+def walk_tree(
+    git_path: Path,
+    tree_hash: str,
+    current_path: Path = Path(),
+) -> list[dict]:
+    """
+    Recursively traverse a Git tree and return every file entry
+    with its full repository path.
+    """
+
+    results = []
+
+    # ============================================================
+    # Load and parse the current tree object.
+    # ============================================================
+
+    tree_object_path = locate_object(git_path, tree_hash)
+    tree_object_bytes = read_object(tree_object_path)
+    tree_object_data = decompress_object(tree_object_bytes)
+
+    tree_header, tree_body = split_object(tree_object_data)
+    tree_entries = parse_body(tree_header, tree_body)
+
+    # ============================================================
+    # Walk through every entry in the current tree.
+    # ============================================================
+
+    for entry in tree_entries:
+
+        # Build the complete repository path for this entry.
+        full_path = current_path / entry["name"]
+
+        # Directory → recurse into the child tree.
+        if entry["mode"]["type"] == "directory":
+
+            child_results = walk_tree(
+                git_path,
+                entry["hash"],
+                full_path,
+            )
+
+            results.extend(child_results)
+
+        # File → store its metadata.
+        else:
+
+            file_entry = entry.copy()
+            file_entry["path"] = str(full_path)
+
+            results.append(file_entry)
+
+    return results
+        
+  
+
+    return tree_entries
+
+
 # ============================================================
 # BLOB OBJECT
 # ============================================================
 
-def parse_blob(body: bytes):
+def parse_blob_body(body: bytes):
     """Parse a blob object."""
-    ...
+    return body
 
 
 # ============================================================
@@ -235,7 +296,7 @@ def parse_body(header: bytes, body: bytes):
         return parse_tree_body(body)
 
     elif object_type == "blob":
-        return parse_blob(body)
+        return parse_blob_body(body)
 
     raise ValueError(f"Unsupported object type: {object_type}")
 

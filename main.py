@@ -10,6 +10,7 @@ from gitinfo import (
     decompress_object,
     split_object,
     parse_body,
+    walk_tree,
 )
 
 # ============================================================
@@ -67,7 +68,7 @@ commit_metadata, commit_message = parse_body(commit_header,commit_body)
 # Every commit points to exactly one root tree.
 # Retrieve its SHA-1 hash from the parsed commit metadata.
 tree_hash = commit_metadata["tree"]
-print(type(tree_hash))
+
 # Locate the root tree object.
 tree_object_path = locate_object(git_path, tree_hash)
 
@@ -87,20 +88,21 @@ tree_entries = parse_body(tree_header,tree_body)
 # ============================================================
 # Blob Object Resolution
 # ============================================================
-#blob_object_path = locate_object(git_path, )
+
 
 
 # ============================================================
 # Output
 # ============================================================
 
-for entry in tree_entries:
+for entry in tree_entries: # pyright: ignore[reportOptionalIterable]
     object_path = locate_object(git_path, entry["hash"])
     object_bytes = read_object(object_path)
     object_data = decompress_object(object_bytes)
-
     header, body = split_object(object_data)
+    blob_content = parse_body(header, body)
 
-    print(entry["name"])
-    print(header)
-    print()
+
+tree_data = walk_tree(git_path,tree_hash)
+for i in tree_data:
+    print(i)
