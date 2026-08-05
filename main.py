@@ -3,13 +3,14 @@ from pathlib import Path
 
 from validator import path_validator
 from gitinfo import (
-    resolve_head,
+    load_commit,
+    resolve_head, load_tree,
     read_ref,
     locate_object,
     read_object,
     decompress_object,
     split_object,
-    parse_body,
+    parse_commit_body, parse_tree_body, parse_blob_body,
     walk_tree,
 )
 
@@ -42,32 +43,12 @@ if git_path is None:
 head_ref = resolve_head(git_path)
 current_commit_hash = read_ref(head_ref)
 
-# ============================================================
-# Commit Object Resolution
-# ============================================================
+# intiating commit 
+commit_metadata, commit_message = load_commit( git_path, current_commit_hash)
+print(commit_metadata, commit_message)
 
-# Locate the commit object using its SHA-1 hash.
-commit_object_path = locate_object(git_path, current_commit_hash)
-
-# Read the compressed commit object from disk.
-commit_object_bytes = read_object(commit_object_path)
-
-# Decompress the commit object.
-commit_object_data = decompress_object(commit_object_bytes)
-
-# Split the object into its header and body.
-commit_header, commit_body = split_object(commit_object_data)
-
-# Parse the commit body into structured Python data.
-commit_metadata, commit_message = parse_body(commit_header,commit_body)
-
-# ============================================================
-# Tree Object Resolution
-# ============================================================
-
-# Every commit points to exactly one root tree.
-# Retrieve its SHA-1 hash from the parsed commit metadata.
-tree_hash = commit_metadata["tree"]
+tree_entries = load_tree(git_path, commit_metadata["tree"])
+tree_hash = commit_metadata["tree"]  
 
 # Locate the root tree object.
 tree_object_path = locate_object(git_path, tree_hash)
@@ -82,7 +63,7 @@ tree_object_data = decompress_object(tree_object_bytes)
 tree_header, tree_body = split_object(tree_object_data)
 
 # Parse every tree entry (mode, filename and object hash).
-tree_entries = parse_body(tree_header,tree_body)  
+tree_entries = parse_tree_body(tree_body)  
 
 
 # ============================================================
@@ -95,12 +76,12 @@ tree_entries = parse_body(tree_header,tree_body)
 # Output
 # ============================================================
 
-for entry in tree_entries: # pyright: ignore[reportOptionalIterable]
+for entry in tree_entries: 
     object_path = locate_object(git_path, entry["hash"])
     object_bytes = read_object(object_path)
     object_data = decompress_object(object_bytes)
     header, body = split_object(object_data)
-    blob_content = parse_body(header, body)
+    blob_content = parse_blob_body( body)
 
 
 tree_data = walk_tree(git_path,tree_hash)

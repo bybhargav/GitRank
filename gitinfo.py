@@ -78,10 +78,40 @@ def parse_header(
 
     return object_type, object_size
 
+def load_object(
+    git_path: Path,
+    object_hash: str,
+) -> tuple[str, bytes]:
+    """Load a Git object and return its type and body."""
+
+    object_path = locate_object(git_path, object_hash)
+    object_bytes = read_object(object_path)
+    object_data = decompress_object(object_bytes)
+
+    header, body = split_object(object_data)
+
+    object_type_bytes, _ = split_header(header)
+    object_type, _ = parse_header(object_type_bytes, b"0")
+
+    return object_type, body
+
 
 # ============================================================
 # COMMIT OBJECT
 # ============================================================
+
+
+
+
+def load_commit(git_path: Path, commit_hash: str ) ->tuple[dict, bytes]:
+    """Load and parse a commit object."""
+
+    object_type, body = load_object(git_path, commit_hash)
+
+    if object_type != "commit":
+        raise ValueError("Expected a commit object.")
+
+    return parse_commit_body(body)
 
 def parse_commit_body(body: bytes) -> tuple[dict, bytes]:
     """Parse a commit body into commit metadata and commit message."""
@@ -96,7 +126,6 @@ def parse_commit_body(body: bytes) -> tuple[dict, bytes]:
     parsed_metadata = parse_metadata(metadata_bytes)
 
     return parsed_metadata, commit_message
-
 
 def parse_metadata(metadata_bytes: bytes) -> dict[str, str | dict | list[str]]:
     """Parse commit metadata into structured Python objects."""
@@ -149,8 +178,18 @@ def parse_identity(identity: str) -> dict:
 # ============================================================
 # TREE OBJECT
 # ============================================================
+def load_tree(git_path: Path, tree_hash: str):
+    """Load and parse a commit object."""
 
-def parse_tree_body(tree_body: bytes) -> list[dict[str, str]]:
+    object_type, body = load_object(git_path, tree_hash)
+
+    if object_type != "tree":
+        raise ValueError(f"Expected a tree object, got '{object_type}'.")
+
+    return parse_tree_body(body)
+
+
+def parse_tree_body(tree_body: bytes) -> list[dict]:
     """Parse a Git tree body into a list of tree entries."""
 
     entries = []
@@ -205,7 +244,7 @@ def parse_mode(mode: str) -> dict[str, str]:
         "type": mode_map.get(mode, "unknown"),
     }
 
-from pathlib import Path
+
 
 
 def walk_tree(
@@ -229,7 +268,7 @@ def walk_tree(
     tree_object_data = decompress_object(tree_object_bytes)
 
     tree_header, tree_body = split_object(tree_object_data)
-    tree_entries = parse_body(tree_header, tree_body)
+    tree_entries = parse_tree_body(tree_body)
 
     # ============================================================
     # Walk through every entry in the current tree.
@@ -241,7 +280,7 @@ def walk_tree(
         full_path = current_path / entry["name"]
 
         # Directory → recurse into the child tree.
-        if entry["mode"]["type"] == "directory":
+        if entry["mode"]["type"] == "directory": 
 
             child_results = walk_tree(
                 git_path,
@@ -261,9 +300,6 @@ def walk_tree(
 
     return results
         
-  
-
-    return tree_entries
 
 
 # ============================================================
@@ -275,34 +311,12 @@ def parse_blob_body(body: bytes):
     return body
 
 
-# ============================================================
-# OBJECT DISPATCHER
-# ============================================================
-
-def parse_body(header: bytes, body: bytes):
-    """Dispatch an object body to its corresponding parser."""
-
-    object_type_bytes, object_size_bytes = split_header(header)
-
-    object_type, _ = parse_header(
-        object_type_bytes,
-        object_size_bytes,
-    )
-
-    if object_type == "commit":
-        return parse_commit_body(body)
-
-    elif object_type == "tree":
-        return parse_tree_body(body)
-
-    elif object_type == "blob":
-        return parse_blob_body(body)
-
-    raise ValueError(f"Unsupported object type: {object_type}")
 
 
 def main():
     repo = Path(".git")
+    
+
 
 
 if __name__ == "__main__":
