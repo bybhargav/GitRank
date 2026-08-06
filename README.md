@@ -1,52 +1,74 @@
 # GitRank
 
-GitRank is a command-line tool for understanding and analyzing Git repositories by reading Git internals directly, without relying on Git commands.
+> Understand Git by building Git from scratch.
 
-The goal of this project is not only to build repository analytics, but also to understand how Git works under the hood by implementing its core object-reading pipeline from scratch.
+GitRank is a Python project that parses Git repositories directly from the `.git` directory without executing Git commands. Instead of relying on `git log`, `git ls-tree`, or other CLI utilities, GitRank reads and interprets Git's internal object database to reconstruct repository information.
+
+The long-term goal is to evolve GitRank into a repository analytics engine capable of ranking contributors, analyzing repository history, and generating insights from Git internals.
 
 ---
 
 ## Current Features
 
-- ✅ Validate repository paths
-- ✅ Detect Git repositories
-- ✅ Read `.git/HEAD`
-- ✅ Resolve `HEAD` to the current branch reference
-- ✅ Read the latest commit hash
-- ✅ Locate Git objects using SHA-1 hashes
-- ✅ Read Git objects in binary format
-- ✅ Decompress Git objects using `zlib`
+### Repository Resolution
+- Read and resolve `HEAD`
+- Resolve branch references
+- Read the latest commit hash
+
+### Git Object Parsing
+- Locate Git objects using SHA-1 hashes
+- Read compressed Git objects
+- Decompress objects using zlib
+- Parse Git object headers
+- Detect object types (`commit`, `tree`, `blob`)
+
+### Commit Parsing
+- Parse commit metadata
+- Parse commit messages
+- Parse parent commits
+- Parse author information
+- Parse committer information
+- Convert Unix timestamps into readable dates
+
+### Tree Parsing
+- Parse Git tree objects
+- Detect files and directories
+- Recursively traverse repository trees
+- Reconstruct repository file paths
+
+### Blob Parsing
+- Load blob objects
+- Read file contents directly from Git objects
+
+### Commit History
+- Traverse commit history using parent references
+- Reconstruct repository history without using `git log`
 
 ---
 
-## Current Pipeline
+## Example Output
 
-```text
-Repository
-    │
-    ▼
-Validate Repository
-    │
-    ▼
-Locate .git
-    │
-    ▼
-Read HEAD
-    │
-    ▼
-Resolve Branch Reference
-    │
-    ▼
-Read Commit Hash
-    │
-    ▼
-Locate Git Object
-    │
-    ▼
-Read Binary Object
-    │
-    ▼
-Decompress Git Object
+```
+Commit Metadata
+================
+
+Author      : bybhargav
+Date        : 05-08-2026 19:10:54
+
+Commit Message
+==============
+
+Parsing trial 1
+
+Repository Files
+================
+
+.gitignore
+README.md
+gitinfo.py
+main.py
+tests/test.txt
+validator.py
 ```
 
 ---
@@ -55,87 +77,119 @@ Decompress Git Object
 
 ```
 GitRank/
-├── main.py          # Application entry point
+│
+├── main.py          # Entry point
+├── gitinfo.py       # Git object parsing engine
 ├── validator.py     # Repository validation
-├── gitinfo.py       # Git object and reference handling
+├── tests/
 └── README.md
 ```
 
 ---
 
-## Usage
+## How It Works
 
-Clone the repository:
-
-```bash
-git clone https://github.com/bybhargav/GitRank.git
-cd GitRank
+```
+HEAD
+ │
+ ▼
+Reference
+ │
+ ▼
+Latest Commit
+ │
+ ▼
+Tree Object
+ │
+ ▼
+Repository Files
 ```
 
-Run GitRank on any local Git repository:
+GitRank reconstructs repository information by following Git's object graph:
 
-```bash
-python main.py /path/to/repository
+```
+HEAD
+ │
+ ▼
+Commit
+ │
+ ├── Tree
+ │      │
+ │      ▼
+ │   Files
+ │
+ └── Parent Commit
+        │
+        ▼
+     Commit History
 ```
 
-Example:
-
-```bash
-python main.py ~/Projects/my-repository
-```
+No Git CLI commands are required during parsing.
 
 ---
 
 ## Roadmap
 
-### Repository
-
-- [x] Repository validation
-- [x] Git repository detection
-
-### HEAD & References
-
-- [x] Read `.git/HEAD`
-- [x] Resolve current branch reference
-- [x] Read current commit hash
-
-### Git Objects
-
-- [x] Locate Git object
-- [x] Read Git object
-- [x] Decompress Git object
-- [ ] Parse commit objects
-- [ ] Parse tree objects
-- [ ] Parse blob objects
-
-### Repository Traversal
-
-- [ ] Traverse commit history
-- [ ] Parse branches
-- [ ] Parse tags
-
-### Analytics
-
+### Version 1
+- [x] Read HEAD
+- [x] Parse commit objects
+- [x] Parse tree objects
+- [x] Parse blob objects
+- [x] Walk repository tree
+- [x] Walk commit history
 - [ ] Contributor statistics
-- [ ] Commit leaderboard
-- [ ] Repository insights
+- [ ] Repository statistics
+- [ ] CLI report
 
-### Visualization
-
-- [ ] Branch graph
-- [ ] Commit graph
-- [ ] Repository visualization
+### Version 2
+- [ ] Merge commit traversal
+- [ ] Branch analysis
+- [ ] File ownership analysis
+- [ ] Code churn metrics
+- [ ] Hotspot detection
+- [ ] Repository health report
 
 ---
 
-## Why GitRank?
+## Why This Project?
 
-Most Git analytics tools rely on Git commands internally.
+GitRank is built as a systems programming project to understand how Git stores data internally.
 
-GitRank takes a different approach by reading Git's object database directly, making it both a learning project and a foundation for advanced repository analytics and visualizations.
+Instead of treating Git as a command-line tool, GitRank explores:
+
+- Git object storage
+- Object compression
+- Commit graphs
+- Tree structures
+- Blob storage
+- Repository traversal
+
+The project emphasizes learning Git's internal architecture by implementing its core concepts from scratch.
+
+---
+
+## Tech Stack
+
+- Python 3.11+
+- pathlib
+- zlib
+- datetime
+
+---
+
+## Future Vision
+
+GitRank aims to become a lightweight repository analytics tool capable of answering questions such as:
+
+- Who contributes the most?
+- Which files change most frequently?
+- Which developers own which files?
+- Repository growth over time
+- Commit activity trends
+- Repository health metrics
 
 ---
 
 ## License
 
-This project is licensed under the MIT License.
+MIT License

@@ -68,30 +68,19 @@ def split_header(header: bytes) -> tuple[bytes, bytes]:
     return object_type, object_size
 
 
-def parse_header(
-    object_type_bytes: bytes,
-    object_size_bytes: bytes,
-) -> tuple[str, int]:
-    """Convert header bytes into Python types."""
-    object_type = object_type_bytes.decode()
-    object_size = int(object_size_bytes)
-
-    return object_type, object_size
-
-def load_object(
-    git_path: Path,
-    object_hash: str,
-) -> tuple[str, bytes]:
+def load_object(git_path: Path, object_hash: str) -> tuple[str, bytes]:
     """Load a Git object and return its type and body."""
 
     object_path = locate_object(git_path, object_hash)
     object_bytes = read_object(object_path)
     object_data = decompress_object(object_bytes)
 
+    # Separate the object header from its body.
     header, body = split_object(object_data)
 
+    # Read the object type from the header.
     object_type_bytes, _ = split_header(header)
-    object_type, _ = parse_header(object_type_bytes, b"0")
+    object_type = object_type_bytes.decode()
 
     return object_type, body
 
@@ -100,29 +89,20 @@ def load_object(
 # COMMIT OBJECT
 # ============================================================
 
-
-
-
 def load_commit(git_path: Path, commit_hash: str ) ->tuple[dict, bytes]:
     """Load and parse a commit object."""
 
     object_type, body = load_object(git_path, commit_hash)
 
     if object_type != "commit":
-        raise ValueError("Expected a commit object.")
+        raise ValueError(f"Expected a commit object, got '{object_type}'.")
 
     return parse_commit_body(body)
 
 def parse_commit_body(body: bytes) -> tuple[dict, bytes]:
     """Parse a commit body into commit metadata and commit message."""
 
-    # A commit body consists of:
-    #
-    # metadata
-    #
-    # commit message
     metadata_bytes, commit_message = body.split(b"\n\n", maxsplit=1)
-
     parsed_metadata = parse_metadata(metadata_bytes)
 
     return parsed_metadata, commit_message
@@ -175,11 +155,35 @@ def parse_identity(identity: str) -> dict:
     }
 
 
+def walk_commit_history(
+    git_path: Path,
+    commit_hash: str,
+) -> list[dict]:
+    """Walk through the complete commit history."""
+
+    commits = []
+    current_commit_hash = commit_hash
+
+    while current_commit_hash:
+
+        # Load the current commit.
+        commit_metadata, commit_message = load_commit(git_path, current_commit_hash)
+
+        # Store the commit.
+        commits.append({"metadata": commit_metadata,"message": commit_message,})
+        # Move to the parent commit.
+        if "parents" in commit_metadata:
+            current_commit_hash = commit_metadata["parents"][0]
+        else:
+            current_commit_hash = None
+
+    return commits
+
 # ============================================================
 # TREE OBJECT
 # ============================================================
-def load_tree(git_path: Path, tree_hash: str):
-    """Load and parse a commit object."""
+def load_tree(git_path: Path, tree_hash: str)-> list[dict]:
+    """Load and parse a tree object."""
 
     object_type, body = load_object(git_path, tree_hash)
 
@@ -245,35 +249,16 @@ def parse_mode(mode: str) -> dict[str, str]:
     }
 
 
-
-
-def walk_tree(
-    git_path: Path,
-    tree_hash: str,
-    current_path: Path = Path(),
-) -> list[dict]:
+def walk_tree(git_path: Path,tree_hash: str,current_path: Path = Path()) -> list[dict]:
     """
     Recursively traverse a Git tree and return every file entry
     with its full repository path.
     """
 
     results = []
+    tree_entries = load_tree(git_path, tree_hash)
 
-    # ============================================================
-    # Load and parse the current tree object.
-    # ============================================================
-
-    tree_object_path = locate_object(git_path, tree_hash)
-    tree_object_bytes = read_object(tree_object_path)
-    tree_object_data = decompress_object(tree_object_bytes)
-
-    tree_header, tree_body = split_object(tree_object_data)
-    tree_entries = parse_tree_body(tree_body)
-
-    # ============================================================
-    # Walk through every entry in the current tree.
-    # ============================================================
-
+    # Load every entry from the current tree object.
     for entry in tree_entries:
 
         # Build the complete repository path for this entry.
@@ -292,32 +277,26 @@ def walk_tree(
 
         # File → store its metadata.
         else:
-
             file_entry = entry.copy()
             file_entry["path"] = str(full_path)
 
             results.append(file_entry)
 
     return results
+
         
-
-
 # ============================================================
 # BLOB OBJECT
 # ============================================================
+def load_blob(git_path: Path,blob_hash: str) -> bytes:
+    """Load and parse a blob object."""
 
-def parse_blob_body(body: bytes):
+    object_type, body = load_object(git_path, blob_hash)
+    if object_type != "blob":
+        raise ValueError(f"Expected a blob object, got '{object_type}'.")
+    
+    return parse_blob_body(body)
+
+def parse_blob_body(body: bytes) -> bytes:
     """Parse a blob object."""
     return body
-
-
-
-
-def main():
-    repo = Path(".git")
-    
-
-
-
-if __name__ == "__main__":
-    main()
