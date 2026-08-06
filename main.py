@@ -7,7 +7,7 @@ from gitinfo import (
     read_ref,
     load_commit,
     walk_tree,
-    walk_commit_history,
+    walk_commit_history,analyze_contributors
 )
 
 
@@ -65,24 +65,11 @@ repository_files = walk_tree(
 # Output
 # ============================================================
 
-"""print("Commit Metadata")
-print("================")
-print(commit_metadata)
 
-print("\nCommit Message")
-print("==============")
-print(commit_message.decode())
-
-print("\nRepository Files")
-print("================")
-
-
-for entry in repository_files:
-    print(entry)"""
 
 commits = walk_commit_history(git_path,current_commit_hash)
+contributors = analyze_contributors(commits)
 
-for commit in commits:
-    print(commit["metadata"]["author"]["name"])
-    print(commit["message"].decode())
-    print("-" * 40)
+for author, stats in contributors.items():
+    print(author,stats)
+    print(f"{author}: {stats['commits']} commits")

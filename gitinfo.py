@@ -300,3 +300,20 @@ def load_blob(git_path: Path,blob_hash: str) -> bytes:
 def parse_blob_body(body: bytes) -> bytes:
     """Parse a blob object."""
     return body
+
+
+# ============================================================
+# CONTRIBUTOR STASTICS 
+# ============================================================
+def analyze_contributors(commits):
+    contributors = {}
+
+    for commit in commits:
+        author = commit["metadata"]["author"]["name"]
+
+        if author not in contributors:
+            contributors[author] = {"commits": 0}
+
+        contributors[author]["commits"] += 1
+
+    return contributors
