@@ -2,9 +2,8 @@ from pathlib import Path
 import zlib
 from datetime import datetime
 
-# ============================================================
-# HEAD
-# ============================================================
+
+# ----- HEAD -----
 
 def read_head(path: Path) -> str:
     """Read the HEAD file and return the current reference path."""
@@ -20,9 +19,7 @@ def resolve_head(path: Path) -> Path:
     return path / read_head(path)
 
 
-# ============================================================
-# REFERENCES
-# ============================================================
+# ----- REFERENCES -----
 
 def read_ref(path: Path) -> str:
     """Read a Git reference file and return its commit hash."""
@@ -33,9 +30,7 @@ def read_ref(path: Path) -> str:
     return content
 
 
-# ============================================================
-# OBJECTS
-# ============================================================
+# ----- OBJECTS -----
 
 def locate_object(git_path: Path, object_hash: str) -> Path:
     """Locate a Git object using its SHA-1 hash."""
@@ -44,6 +39,7 @@ def locate_object(git_path: Path, object_hash: str) -> Path:
 
 def read_object(object_path: Path) -> bytes:
     """Read a compressed Git object from disk."""
+
     file = open(object_path, "rb")
     byte_data = file.read()
     file.close()
@@ -85,11 +81,9 @@ def load_object(git_path: Path, object_hash: str) -> tuple[str, bytes]:
     return object_type, body
 
 
-# ============================================================
-# COMMIT OBJECT
-# ============================================================
+# ----- COMMIT OBJECTS -----
 
-def load_commit(git_path: Path, commit_hash: str ) ->tuple[dict, bytes]:
+def load_commit(git_path: Path, commit_hash: str ) -> tuple[dict, bytes]:
     """Load and parse a commit object."""
 
     object_type, body = load_object(git_path, commit_hash)
@@ -99,6 +93,7 @@ def load_commit(git_path: Path, commit_hash: str ) ->tuple[dict, bytes]:
 
     return parse_commit_body(body)
 
+
 def parse_commit_body(body: bytes) -> tuple[dict, bytes]:
     """Parse a commit body into commit metadata and commit message."""
 
@@ -107,17 +102,13 @@ def parse_commit_body(body: bytes) -> tuple[dict, bytes]:
 
     return parsed_metadata, commit_message
 
+
 def parse_metadata(metadata_bytes: bytes) -> dict[str, str | dict | list[str]]:
     """Parse commit metadata into structured Python objects."""
-
     parsed_metadata = {}
 
     # Read every metadata line.
     for line in metadata_bytes.split(b"\n"):
-
-        # Every metadata line begins with:
-        #
-        # key value
         key, value = line.split(b" ", maxsplit=1)
 
         # A commit may contain multiple parent commits.
@@ -142,7 +133,6 @@ def parse_identity(identity: str) -> dict:
     """Parse an author or committer identity."""
 
     identity_parts = identity.split()
-
     timestamp = int(identity_parts[-2])
     dt = datetime.fromtimestamp(timestamp)
 
@@ -155,10 +145,7 @@ def parse_identity(identity: str) -> dict:
     }
 
 
-def walk_commit_history(
-    git_path: Path,
-    commit_hash: str,
-) -> list[dict]:
+def walk_commit_history(git_path: Path,commit_hash: str) -> list[dict]:
     """Walk through the complete commit history."""
 
     commits = []
@@ -168,9 +155,8 @@ def walk_commit_history(
 
         # Load the current commit.
         commit_metadata, commit_message = load_commit(git_path, current_commit_hash)
-
-        # Store the commit.
         commits.append({"metadata": commit_metadata,"message": commit_message,})
+
         # Move to the parent commit.
         if "parents" in commit_metadata:
             current_commit_hash = commit_metadata["parents"][0]
@@ -179,10 +165,10 @@ def walk_commit_history(
 
     return commits
 
-# ============================================================
-# TREE OBJECT
-# ============================================================
-def load_tree(git_path: Path, tree_hash: str)-> list[dict]:
+
+# ----- TREE OBJECTS -----
+
+def load_tree(git_path: Path, tree_hash: str) -> list[dict]:
     """Load and parse a tree object."""
 
     object_type, body = load_object(git_path, tree_hash)
@@ -231,6 +217,7 @@ def parse_tree_body(tree_body: bytes) -> list[dict]:
         )
 
     return entries
+
 
 def parse_mode(mode: str) -> dict[str, str]:
     """Parse a Git file mode into structured metadata."""
@@ -285,9 +272,8 @@ def walk_tree(git_path: Path,tree_hash: str,current_path: Path = Path()) -> list
     return results
 
         
-# ============================================================
-# BLOB OBJECT
-# ============================================================
+# ----- BLOB OBJECTS -----
+
 def load_blob(git_path: Path,blob_hash: str) -> bytes:
     """Load and parse a blob object."""
 
@@ -297,23 +283,7 @@ def load_blob(git_path: Path,blob_hash: str) -> bytes:
     
     return parse_blob_body(body)
 
+
 def parse_blob_body(body: bytes) -> bytes:
     """Parse a blob object."""
     return body
-
-
-# ============================================================
-# CONTRIBUTOR STASTICS 
-# ============================================================
-def analyze_contributors(commits):
-    contributors = {}
-
-    for commit in commits:
-        author = commit["metadata"]["author"]["name"]
-
-        if author not in contributors:
-            contributors[author] = {"commits": 0}
-
-        contributors[author]["commits"] += 1
-
-    return contributors
