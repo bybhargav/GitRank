@@ -1,4 +1,4 @@
-# ----- CONTRIBUTOR STASTICS ----- 
+# ----- CONTRIBUTOR STATISTICS -----
 
 def analyze_contributors(commits):
     contributors = {}
@@ -32,3 +32,14 @@ def repo_details(commits, tree_data):
                     }
 
     return summary
+
+
+def rank_contributors(contributors):
+    """Rank contributors based on the number of commits."""
+    rank = []
+    number = 0
+    for name, data in sorted(contributors.items(), key=lambda item: item[1]["commits"], reverse=True):
+        number += 1
+        rank.append({"rank": number,"name": name, "commits": data["commits"]})
+
+    return rank

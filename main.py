@@ -50,13 +50,32 @@ contributors = analytics.analyze_contributors(commits)
 for author, stats in contributors.items():
     print(author,stats)
     print(f"{author}: {stats['commits']} commits")
-"""
+
+
 details = (analytics.repo_details(commits,repository_files))
 print()
 for i in details:
     print(f"{i}: {details[i]}")
 print()
 
-
-
 print(contributors)
+"""
+
+
+
+
+ranks = analytics.rank_contributors(contributors)
+print()
+print("------------- GitRank Statistics -----------")
+print(f"{'Rank':<8}{'Name':<25}{'Commits':>10}")
+print("--------------------------------------------")
+
+for contributor in ranks:
+    print(
+        f"{contributor['rank']:<8}"
+        f"{contributor['name']:<25}"
+        f"{contributor['commits']:>10}"
+    )
+
+print("--------------------------------------------")
+print()
