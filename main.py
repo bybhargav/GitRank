@@ -77,6 +77,5 @@ for contributor in ranks:
         f"{contributor['commits']:>10}"
     )
 
-
 print("--------------------------------------------")
 print()
