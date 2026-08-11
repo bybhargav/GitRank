@@ -43,29 +43,9 @@ repository_files = git.walk_tree(git_path,tree_hash)
 
 # ----- OUTPUT -----
 
-#commits = git.walk_commit_history(git_path,current_commit_hash)
-commits = (git.walk_commit_history_entire(git_path,current_commit_hash))
+commits = (git.walk_commit_history(git_path,current_commit_hash))
+print(type(commits))
 contributors = analytics.analyze_contributors(commits)
-
-
-
-"""
-for author, stats in contributors.items():
-    print(author,stats)
-    print(f"{author}: {stats['commits']} commits")
-
-
-details = (analytics.repo_details(commits,repository_files))
-print()
-for i in details:
-    print(f"{i}: {details[i]}")
-print()
-
-print(contributors)
-"""
-
-
-
 
 ranks = analytics.rank_contributors(contributors)
 print()

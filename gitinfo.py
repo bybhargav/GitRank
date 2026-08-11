@@ -146,26 +146,7 @@ def parse_identity(identity: str) -> dict:
     }
 
 
-def walk_commit_history(git_path: Path,commit_hash: str) -> list[dict]:
-    """Walk through the complete commit history."""
-
-    commits = []
-    current_commit_hash = commit_hash
-
-    while current_commit_hash:
-
-        # Load the current commit.
-        commit_metadata, commit_message = load_commit(git_path, current_commit_hash)
-        commits.append({"metadata": commit_metadata,"message": commit_message,})
-        # Move to the parent commit.
-        if "parents" in commit_metadata:
-            current_commit_hash = commit_metadata["parents"][0]
-        else:
-            current_commit_hash = None
-
-    return commits
-
-def walk_commit_history_entire(git_path: Path, commit_hash: str):
+def walk_commit_history(git_path: Path, commit_hash: str) -> list[dict]:
     commits = []
     stack = [commit_hash]
     visited = set()
@@ -194,7 +175,7 @@ def walk_commit_history_entire(git_path: Path, commit_hash: str):
         if "parents" in commit_metadata:
             for parent in commit_metadata["parents"]:
                 stack.append(parent)
-                
+
     return commits
 
 
