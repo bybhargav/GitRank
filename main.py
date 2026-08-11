@@ -1,64 +1,56 @@
 import sys
-from pathlib import Path
-from validator import path_validator
+import argparse
 import gitinfo as git
+from pathlib import Path
 import gitanalytics as analytics
+from validator import path_validator
+
+def main():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("-p","--path",required=True,
+                        help="Path to the Git repository")
+
+    parser.add_argument("-u","--user",
+                        help="Show contributor statistics")
 
 
-# -----  Repository Input ----- 
-
-if len(sys.argv) != 2:
-    sys.exit("Usage: python main.py <repository_path>")
-
-repository_path = Path(sys.argv[1])
+    args = parser.parse_args()
+    repository_path = Path(args.path)
 
 
-# -----  Repository Validation ----- 
+    # ----- Repository Validation -----
 
-git_path = path_validator(repository_path)
+    git_path = path_validator(repository_path)
 
-if git_path is None:
-    sys.exit("Error: This directory doesn't contain a .git folder.")
-
-
-# -----  HEAD Resolution ----- 
-
-head_ref = git.resolve_head(git_path)
-current_commit_hash = git.read_ref(head_ref)
+    if git_path is None:
+        sys.exit("Error: This directory doesn't contain a .git folder.")
 
 
-# ----- commit object -----
-commit_metadata, commit_message = git.load_commit(
-    git_path,
-    current_commit_hash,
-)
+    # -----  HEAD Resolution ----- 
 
-tree_hash = commit_metadata["tree"]
+    head_ref = git.resolve_head(git_path)
+    current_commit_hash = git.read_ref(head_ref)
 
 
-# ----- Repository Tree -----
+    # ----- OUTPUT -----
 
-repository_files = git.walk_tree(git_path,tree_hash)
+    commits = git.walk_commit_history(git_path,current_commit_hash)
+    contributors = analytics.analyze_contributors(commits)
+  
+    if args.user:
+        user_commits = analytics.get_user_commits(commits,args.user)
+        if user_commits is None:
+            sys.exit(f"\n Error: Contributor '{args.user}' was not found.\n")
+        else:
+            details = analytics.user_details(user_commits)
+            analytics.print_user_details(details)
+    
+    else:
+        ranks = analytics.rank_contributors(contributors)
+        analytics.print_contributor_ranking(ranks)
 
 
-# ----- OUTPUT -----
-
-commits = (git.walk_commit_history(git_path,current_commit_hash))
-print(type(commits))
-contributors = analytics.analyze_contributors(commits)
-
-ranks = analytics.rank_contributors(contributors)
-print()
-print("------------- GitRank Statistics -----------")
-print(f"{'Rank':<8}{'Name':<25}{'Commits':>10}")
-print("--------------------------------------------")
-
-for contributor in ranks:
-    print(
-        f"{contributor['rank']:<8}"
-        f"{contributor['name']:<25}"
-        f"{contributor['commits']:>10}"
-    )
-
-print("--------------------------------------------")
-print()
+# ----- MAIN -----
+if __name__ == "__main__":
+    main()
