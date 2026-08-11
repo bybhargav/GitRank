@@ -43,8 +43,11 @@ repository_files = git.walk_tree(git_path,tree_hash)
 
 # ----- OUTPUT -----
 
-commits = git.walk_commit_history(git_path,current_commit_hash)
+#commits = git.walk_commit_history(git_path,current_commit_hash)
+commits = (git.walk_commit_history_entire(git_path,current_commit_hash))
 contributors = analytics.analyze_contributors(commits)
+
+
 
 """
 for author, stats in contributors.items():

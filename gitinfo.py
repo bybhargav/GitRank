@@ -109,6 +109,7 @@ def parse_metadata(metadata_bytes: bytes) -> dict[str, str | dict | list[str]]:
 
     # Read every metadata line.
     for line in metadata_bytes.split(b"\n"):
+
         key, value = line.split(b" ", maxsplit=1)
 
         # A commit may contain multiple parent commits.
@@ -156,13 +157,44 @@ def walk_commit_history(git_path: Path,commit_hash: str) -> list[dict]:
         # Load the current commit.
         commit_metadata, commit_message = load_commit(git_path, current_commit_hash)
         commits.append({"metadata": commit_metadata,"message": commit_message,})
-
         # Move to the parent commit.
         if "parents" in commit_metadata:
             current_commit_hash = commit_metadata["parents"][0]
         else:
             current_commit_hash = None
 
+    return commits
+
+def walk_commit_history_entire(git_path: Path, commit_hash: str):
+    commits = []
+    stack = [commit_hash]
+    visited = set()
+
+    while stack:
+        top = stack.pop()
+
+        # Have I already processed this commit?
+        if top in visited:
+            continue
+
+        # Mark it as processed.
+        visited.add(top)
+
+        # Load it.
+        commit_metadata, commit_message = load_commit(
+            git_path,
+            top,
+        )
+
+        # Store it.
+        commits.append({"metadata": commit_metadata,
+                        "message": commit_message})
+
+        # Put its parents into the stack.
+        if "parents" in commit_metadata:
+            for parent in commit_metadata["parents"]:
+                stack.append(parent)
+                
     return commits
 
 
