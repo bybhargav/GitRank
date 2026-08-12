@@ -14,10 +14,11 @@ The long-term goal is to evolve GitRank into a lightweight repository analytics 
 
 ### Repository Resolution
 
-- Read and resolve `HEAD`
-- Resolve branch references
-- Read the current commit hash
 - Validate Git repository paths
+- Read and resolve `HEAD`
+- Resolve local branch references
+- Read branch commit hashes
+- Traverse history from multiple branch heads
 
 ### Git Object Parsing
 
@@ -25,7 +26,10 @@ The long-term goal is to evolve GitRank into a lightweight repository analytics 
 - Read compressed Git objects
 - Decompress objects using zlib
 - Parse Git object headers
-- Detect object types: `commit`, `tree`, `blob`
+- Detect object types:
+  - `commit`
+  - `tree`
+  - `blob`
 
 ### Commit Parsing
 
@@ -53,8 +57,11 @@ The long-term goal is to evolve GitRank into a lightweight repository analytics 
 
 - Traverse complete commit history
 - Traverse multiple parent relationships
+- Traverse history from multiple local branch heads
 - Use iterative DFS with a stack
 - Track visited commits to avoid duplicate processing
+- Build a commit-to-parent graph
+- Topologically order commits from children to parents
 
 ### Contributor Analytics
 
@@ -65,6 +72,17 @@ The long-term goal is to evolve GitRank into a lightweight repository analytics 
 - Identify merge commits authored by a contributor
 - Determine first and latest commits
 - Display first and latest commit messages
+
+### Commit Graph
+
+- Build a commit graph from commit-parent relationships
+- Handle normal commits and merge commits
+- Track multiple parent relationships
+- Render commit history in the terminal
+- Display commit hashes
+- Display commit messages
+- Display commit authors
+- Display branch and merge relationships
 
 ### CLI
 
@@ -118,6 +136,33 @@ Fix commit history traversal for merge commits
 
 ---
 
+## Example: Commit Graph
+
+```text
+--------------- GitRank - Commit Graph ---------------
+
+* b678483  updated README.md
+|
+* 16a1c74  feat: add contributor user statistics
+|
+* c33523f  Fix commit history traversal for merge commits
+|
+* 77468ce  Fix commit history traversal for merge commits
+|
+* ab58d89  Merge pull request #1 from ManojKanakam/main
+|\
+| * 51dc9a9  Contributor: Testing
+| * 14b6046  Contributor: Testing
+|/
+* 94dab69  Refactor Git object loading and implement commit history traversal
+|
+* 3ef95cd  parsing trial 1
+```
+
+The graph is built from Git's commit-parent relationships rather than from Git's command-line output.
+
+---
+
 ## Project Structure
 
 ```text
@@ -145,15 +190,18 @@ Repository
     ▼
    .git
     │
-    ▼
-   HEAD
+    ├── HEAD
     │
-    ▼
-Branch Reference
-    │
-    ▼
-Commit Hash
+    └── refs/heads/
+           │
+           ▼
+      Branch Commit Hashes
+           │
+           ▼
+      Commit Traversal
 ```
+
+GitRank can start traversal from multiple local branch heads.
 
 ### Commit
 
@@ -184,7 +232,8 @@ A merge commit can have multiple parents:
 
 ```text
     B
-   /   C   D
+   / \
+  C   D
    \ /
     E
 ```
@@ -202,10 +251,10 @@ GitRank traverses these relationships using an iterative depth-first traversal w
                     path_validator
                           │
                           ▼
-                     HEAD Resolver
+                   Branch References
                           │
                           ▼
-                    Commit Traversal
+                 Commit History Walker
                           │
                           ▼
                        Commits
@@ -214,11 +263,11 @@ GitRank traverses these relationships using an iterative depth-first traversal w
              │                         │
              ▼                         ▼
     Contributor Analytics        Commit Graph
-             │
-       ┌─────┴─────┐
-       │           │
-       ▼           ▼
-    Ranking     User Profile
+             │                         │
+       ┌─────┴─────┐             ┌─────┴─────┐
+       │           │             │           │
+       ▼           ▼             ▼           ▼
+    Ranking     User Profile   Ordering   Visualization
 ```
 
 ---
@@ -235,14 +284,18 @@ GitRank traverses these relationships using an iterative depth-first traversal w
 - [x] Walk repository tree
 - [x] Walk complete commit history
 - [x] Handle multiple commit parents
+- [x] Traverse multiple local branch heads
+- [x] Build commit graph
+- [x] Order commits topologically
+- [x] Render commit graph in terminal
 - [x] Contributor statistics
 - [x] Contributor ranking
 - [x] Contributor profile statistics
 - [x] CLI repository path argument
 - [x] CLI contributor argument
 - [ ] Repository statistics
-- [ ] Commit graph visualization
 - [ ] Code churn metrics
+- [ ] Lines added / removed
 
 ### Version 2
 
@@ -251,26 +304,33 @@ GitRank traverses these relationships using an iterative depth-first traversal w
 - [ ] Lines added / removed
 - [ ] Hotspot detection
 - [ ] Repository health report
+- [ ] Packed object support
+- [ ] Git index parsing
+- [ ] Advanced commit graph rendering
 
 ---
 
 ## Current Limitations
 
-GitRank currently reads Git objects stored as loose objects inside:
+GitRank currently supports Git objects stored as loose objects inside:
 
 ```text
 .git/objects/
 ```
 
-Packed Git objects inside:
+Large repositories such as the Linux kernel commonly store objects inside packfiles:
 
 ```text
 .git/objects/pack/
+├── pack-*.pack
+└── pack-*.idx
 ```
 
-are not currently supported.
+Packed objects are currently **not supported** by GitRank.
 
-GitRank is intentionally focused on learning and reconstructing Git's internal architecture rather than providing full compatibility with every Git repository feature.
+As a result, GitRank works with repositories whose required objects are available as loose objects, but it cannot yet fully process repositories that rely on packed object storage.
+
+Packed-object support is planned for a future version.
 
 ---
 
@@ -288,6 +348,8 @@ Instead of treating Git as a command-line tool, GitRank explores:
 - Blob storage
 - Repository traversal
 - Contributor analytics
+- Branch relationships
+- Merge commits
 
 The project emphasizes learning Git's internal architecture by implementing its core concepts from scratch.
 
@@ -319,6 +381,14 @@ GitRank aims to become a lightweight repository analytics tool capable of answer
 
 ---
 
-## License
+## Disclaimer
 
-MIT License
+GitRank is an educational and experimental project created for learning,
+curiosity, and fun.
+
+It is provided for legitimate development, research, and educational use.
+The author does not encourage or support using this project for malicious,
+illegal, abusive, or harmful activities.
+
+Use GitRank at your own discretion. The author is not responsible for any
+damage, loss, misuse, or consequences resulting from the use of this project.

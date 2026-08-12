@@ -136,3 +136,242 @@ def print_user_details(details: dict):
     print("--------------------------------------------")
     print()
 
+# ----- GRAPH DEALINGS -----
+def build_commit_graph(commits):
+    graph = {}
+
+    for commit in commits:
+        graph[commit['hash']] = commit['metadata'].get('parents',[])
+
+    return graph
+
+
+def order_commits_for_graph(
+    commits: list[dict],
+    graph: dict[str, list[str]],
+    branch_hashes: list[str],
+) -> list[dict]:
+    """Topologically orders commits top-down (children before parents)."""
+
+    if not commits:
+        return []
+
+    commit_by_hash = {c["hash"]: c for c in commits}
+
+    # 1. Map parent -> children to track top-down dependencies
+    children_map = {chash: set() for chash in commit_by_hash}
+
+    for chash, parents in graph.items():
+        if chash not in commit_by_hash:
+            continue
+
+        for p in parents:
+            if p in children_map:
+                children_map[p].add(chash)
+
+    # 2. Count remaining unvisited children for each commit
+    remaining_children = {
+        chash: len(children)
+        for chash, children in children_map.items()
+    }
+
+    def get_timestamp(chash: str) -> int:
+        c = commit_by_hash.get(chash)
+
+        if not c:
+            return 0
+
+        return c.get("metadata", {}).get("author", {}).get("time", 0)
+
+    # 3. Find all entry points
+    ready = [
+        chash
+        for chash, count in remaining_children.items()
+        if count == 0
+    ]
+
+    ready.sort(
+        key=get_timestamp,
+        reverse=True,
+    )
+
+    ordered = []
+    visited = set()
+
+    # 4. Topological traversal loop
+    while ready:
+        curr_hash = ready.pop(0)
+
+        if curr_hash in visited:
+            continue
+
+        visited.add(curr_hash)
+        ordered.append(commit_by_hash[curr_hash])
+
+        # Decrease remaining children count for all parents
+        parents = [
+            p
+            for p in graph.get(curr_hash, [])
+            if p in commit_by_hash
+        ]
+
+        for parent in parents:
+            remaining_children[parent] -= 1
+
+            if (
+                remaining_children[parent] == 0
+                and parent not in visited
+            ):
+                ready.append(parent)
+
+        # Re-sort ready candidates
+        ready.sort(
+            key=get_timestamp,
+            reverse=True,
+        )
+
+    return ordered
+
+
+def print_commit_graph(
+    ordered_commits: list[dict],
+    graph: dict[str, list[str]],
+):
+    """Render the ordered commits as an ASCII graph."""
+
+    if not ordered_commits:
+        return
+
+    commit_by_hash = {
+        c["hash"]: c
+        for c in ordered_commits
+    }
+
+    lanes = []
+
+    print()
+    print("--------------- GitRank - Commit Graph ---------------")
+    print()
+
+    for commit in ordered_commits:
+        chash = commit["hash"]
+
+        parents = [
+            p
+            for p in graph.get(chash, [])
+            if p in commit_by_hash
+        ]
+
+        message = commit["message"].decode().splitlines()[0]
+
+        # Assign column lane
+
+        if chash not in lanes:
+            lanes.append(chash)
+
+        idx = lanes.index(chash)
+
+        # --- Render Commit Line ---
+
+        node_symbols = [
+            "*"
+            if i == idx
+            else "|"
+            for i in range(len(lanes))
+        ]
+
+        print(
+            f"{' '.join(node_symbols)} "
+            f"{chash[:7]} "
+            f"{message}"
+        )
+
+        # --- Render Transitions & Update Lanes ---
+
+        if len(parents) > 1:
+            # MERGE SPLIT (|\)
+
+            lanes[idx] = parents[0]
+
+            lanes.insert(
+                idx + 1,
+                parents[1],
+            )
+
+            split_parts = []
+
+            for i in range(len(lanes) - 1):
+                if i == idx:
+                    split_parts.append("|\\")
+                else:
+                    split_parts.append("|")
+
+            print(
+                "".join(
+                    p
+                    if p == "|\\"
+                    else f"{p} "
+                    for p in split_parts
+                ).rstrip()
+            )
+
+        elif len(parents) == 1:
+            parent = parents[0]
+
+            if (
+                parent in lanes
+                and lanes.index(parent) != idx
+            ):
+                # MERGE JOIN (|/)
+
+                target_idx = lanes.index(parent)
+
+                join_tokens = []
+
+                for i in range(len(lanes)):
+                    if (
+                        i == target_idx
+                        and idx == target_idx + 1
+                    ):
+                        join_tokens.append("|/")
+
+                    elif i == idx:
+                        continue
+
+                    else:
+                        join_tokens.append("|")
+
+                print(
+                    " ".join(join_tokens)
+                )
+
+                lanes.pop(idx)
+
+            else:
+                # LINEAR STEP
+
+                lanes[idx] = parent
+
+                if (
+                    len(lanes) > 1
+                    or commit != ordered_commits[-1]
+                ):
+                    print(
+                        " ".join(
+                            "|" for _ in lanes
+                        )
+                    )
+
+        else:
+            # ROOT COMMIT
+
+            lanes.pop(idx)
+
+            if lanes:
+                print(
+                    " ".join(
+                        "|" for _ in lanes
+                    )
+                )
+
+    print()

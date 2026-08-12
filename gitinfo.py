@@ -30,6 +30,19 @@ def read_ref(path: Path) -> str:
     return content
 
 
+def get_branch_refs(git_path: Path) -> list[str]:
+    """Read all local branch references and return their commit hashes."""
+
+    heads_path = git_path / "refs" / "heads"
+    branch_hashes = []
+
+    for branch_path in heads_path.iterdir():
+        if branch_path.is_file():
+            branch_hashes.append(read_ref(branch_path))
+
+    return branch_hashes
+
+
 # ----- OBJECTS -----
 
 def locate_object(git_path: Path, object_hash: str) -> Path:
@@ -64,7 +77,8 @@ def split_header(header: bytes) -> tuple[bytes, bytes]:
     return object_type, object_size
 
 
-def load_object(git_path: Path, object_hash: str) -> tuple[str, bytes]:
+def load_object(git_path: Path, 
+                object_hash: str) -> tuple[str, bytes]:
     """Load a Git object and return its type and body."""
 
     object_path = locate_object(git_path, object_hash)
@@ -83,7 +97,8 @@ def load_object(git_path: Path, object_hash: str) -> tuple[str, bytes]:
 
 # ----- COMMIT OBJECTS -----
 
-def load_commit(git_path: Path, commit_hash: str ) -> tuple[dict, bytes]:
+def load_commit(git_path: Path, 
+                commit_hash: str ) -> tuple[dict, bytes]:
     """Load and parse a commit object."""
 
     object_type, body = load_object(git_path, commit_hash)
@@ -103,7 +118,8 @@ def parse_commit_body(body: bytes) -> tuple[dict, bytes]:
     return parsed_metadata, commit_message
 
 
-def parse_metadata(metadata_bytes: bytes) -> dict[str, str | dict | list[str]]:
+def parse_metadata(metadata_bytes: 
+                   bytes) -> dict[str, str | dict | list[str]]:
     """Parse commit metadata into structured Python objects."""
     parsed_metadata = {}
 
@@ -146,32 +162,33 @@ def parse_identity(identity: str) -> dict:
     }
 
 
-def walk_commit_history(git_path: Path, commit_hash: str) -> list[dict]:
+def walk_commit_history(
+    git_path: Path,
+    commit_hashes: list[str],
+) -> list[dict]:
     commits = []
-    stack = [commit_hash]
+    stack = commit_hashes.copy()
     visited = set()
 
     while stack:
         top = stack.pop()
 
-        # Have I already processed this commit?
         if top in visited:
             continue
 
-        # Mark it as processed.
         visited.add(top)
 
-        # Load it.
         commit_metadata, commit_message = load_commit(
             git_path,
             top,
         )
 
-        # Store it.
-        commits.append({"metadata": commit_metadata,
-                        "message": commit_message})
+        commits.append({
+            "hash": top,
+            "metadata": commit_metadata,
+            "message": commit_message,
+        })
 
-        # Put its parents into the stack.
         if "parents" in commit_metadata:
             for parent in commit_metadata["parents"]:
                 stack.append(parent)
@@ -249,7 +266,8 @@ def parse_mode(mode: str) -> dict[str, str]:
     }
 
 
-def walk_tree(git_path: Path,tree_hash: str,current_path: Path = Path()) -> list[dict]:
+def walk_tree(git_path: Path,tree_hash: str,
+              current_path: Path = Path()) -> list[dict]:
     """
     Recursively traverse a Git tree and return every file entry
     with its full repository path.
@@ -300,3 +318,6 @@ def load_blob(git_path: Path,blob_hash: str) -> bytes:
 def parse_blob_body(body: bytes) -> bytes:
     """Parse a blob object."""
     return body
+
+
+
