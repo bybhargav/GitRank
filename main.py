@@ -23,6 +23,13 @@ def main():
         help="Show contributor statistics",
     )
 
+    parser.add_argument(
+        "-g",
+        "--graph",
+        action="store_true",
+        help="Show entire commit graph",
+    )
+
     args = parser.parse_args()
     repository_path = Path(args.path)
 
@@ -37,23 +44,30 @@ def main():
 
     branch_hashes = git.get_branch_refs(git_path)
 
-    commits = git.walk_commit_history(git_path,branch_hashes)
+    commits = git.walk_commit_history(
+        git_path,
+        branch_hashes,
+    )
 
     # ----- Analytics -----
 
     contributors = analytics.analyze_contributors(commits)
 
-    graph = analytics.build_commit_graph(commits)
+    if args.graph:
+        graph = analytics.build_commit_graph(commits)
 
-    # 1. Order the commits top-down from branch heads
-    ordered_commits = analytics.order_commits_for_graph(commits, graph, branch_hashes)
+        ordered_commits = analytics.order_commits_for_graph(
+            commits,
+            graph,
+            branch_hashes,
+        )
 
-    # 2. Render the graph
-    analytics.print_commit_graph(ordered_commits, graph)
+        analytics.print_commit_graph(
+            ordered_commits,
+            graph,
+        )
 
-    # ----- User Statistics / Contributor Ranking -----
-
-    if args.user:
+    elif args.user:
         user_commits = analytics.get_user_commits(
             commits,
             args.user,
