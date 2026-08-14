@@ -1,3 +1,5 @@
+from progress import GREEN, CYAN, YELLOW, RED, BOLD, RESET, MAGENTA
+
 # ----- CONTRIBUTOR STATISTICS -----
 
 def analyze_contributors(commits):
@@ -262,6 +264,7 @@ def print_commit_graph(
             if p in commit_by_hash
         ]
 
+        author = commit["metadata"]["author"]["name"]
         message = commit["message"].decode().splitlines()[0]
 
         # Assign column lane
@@ -274,7 +277,7 @@ def print_commit_graph(
         # --- Render Commit Line ---
 
         node_symbols = [
-            "*"
+            f"{MAGENTA}*{RESET}"
             if i == idx
             else "|"
             for i in range(len(lanes))
@@ -282,8 +285,9 @@ def print_commit_graph(
 
         print(
             f"{' '.join(node_symbols)} "
-            f"{chash[:7]} "
-            f"{message}"
+            f"{GREEN}{chash[:7]}{RESET} "
+            f"{CYAN}{BOLD}{author}{RESET} "
+            f"{YELLOW}{message}{RESET}"
         )
 
         # --- Render Transitions & Update Lanes ---

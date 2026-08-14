@@ -1,7 +1,7 @@
 from pathlib import Path
 import zlib
 from datetime import datetime
-
+import gitpack as pack
 
 # ----- HEAD -----
 
@@ -98,248 +98,6 @@ def load_loose_object(git_path, object_hash) -> tuple[str, bytes] :
     return object_type, body
 
 
-def find_pack_files(git_path: Path) -> tuple[list[Path], list[Path]]:
-    """Returns list of idx files and pack files """
-    idx_files = []
-    pack_files = []
-
-    pack_path = git_path / "objects" / "pack"
-
-    for file in pack_path.iterdir():
-        if file.suffix == ".idx":
-            idx_files.append(file)
-
-        elif file.suffix == ".pack":
-            pack_files.append(file)
-
-    return idx_files, pack_files
-
-
-def read_index_file(idx_path: Path) -> bytes:
-    """Read a Git pack index file."""
-
-    with open(idx_path, "rb") as file:
-        return file.read()
-
-
-def read_pack_object_header(file) -> tuple[int, int]:
-    first_byte = file.read(1)[0]
-
-    object_type = (first_byte >> 4) & 0b0111
-
-    object_size = first_byte & 0b00001111
-    shift = 4
-
-    while first_byte & 0b10000000:
-        first_byte = file.read(1)[0]
-
-        object_size |= (
-            (first_byte & 0b01111111)
-            << shift
-        )
-
-        shift += 7
-
-    return object_type, object_size
-
-def find_object_offset(
-    idx_file: Path,
-    object_hash: str,
-) -> int | None:
-
-    index_data = read_index_file(idx_file)
-
-    fanout = []
-
-    start = 8
-    end = start + (256 * 4)
-
-    for offset in range(start, end, 4):
-        value = int.from_bytes(
-            index_data[offset:offset + 4],
-            "big",
-        )
-        fanout.append(value)
-
-    object_bytes = bytes.fromhex(object_hash)
-
-    first_byte = object_bytes[0]
-
-    start_index = (
-        0
-        if first_byte == 0
-        else fanout[first_byte - 1]
-    )
-
-    end_index = fanout[first_byte]
-
-    sha_table_start = 8 + (256 * 4)
-
-    left = start_index
-    right = end_index - 1
-
-    while left <= right:
-
-        middle = (left + right) // 2
-
-        sha_offset = (
-            sha_table_start
-            + (middle * 20)
-        )
-
-        middle_hash = index_data[
-            sha_offset:sha_offset + 20
-        ]
-
-        if middle_hash == object_bytes:
-
-            print("found object index:", middle)
-
-            object_count = fanout[-1]
-
-            crc_table_start = (
-                sha_table_start
-                + (object_count * 20)
-            )
-
-            offset_table_start = (
-                crc_table_start
-                + (object_count * 4)
-            )
-
-            offset_position = (
-                offset_table_start
-                + (middle * 4)
-            )
-
-            raw_offset = int.from_bytes(
-                index_data[
-                    offset_position:offset_position + 4
-                ],
-                "big",
-            )
-
-            if raw_offset & 0x80000000:
-                large_offset_index = raw_offset & 0x7fffffff
-
-                large_offset_table_start = (
-                    offset_table_start
-                    + (object_count * 4)
-                )
-
-                large_offset_position = (
-                    large_offset_table_start
-                    + (large_offset_index * 8)
-                )
-
-                pack_offset = int.from_bytes(
-                    index_data[
-                        large_offset_position:
-                        large_offset_position + 8
-                    ],
-                    "big",
-                )
-
-            else:
-                pack_offset = raw_offset
-
-            print("pack offset:", pack_offset)
-
-            return pack_offset
-
-        if middle_hash < object_bytes:
-            left = middle + 1
-        else:
-            right = middle - 1
-
-    return None
-
-
-def find_object_in_path(
-    idx_files: list[Path],
-    pack_files: list[Path],
-    object_hash: str) -> tuple[Path, Path, int]:
-
-    for idx_file in idx_files:
-
-        offset = find_object_offset(
-            idx_file,
-            object_hash,
-        )
-
-        if offset is not None:
-            pack_file = idx_file.with_suffix(".pack")
-
-            return idx_file, pack_file, offset
-
-    raise KeyError(f"Object '{object_hash}' was not found in pack indexes.")
-
-
-def load_packed_object(
-    git_path: Path,
-    object_hash: str,
-) -> tuple[str, bytes]:
-
-    idx_files, pack_files = find_pack_files(git_path)
-
-    idx_file, pack_file, offset = find_object_in_path(
-        idx_files,
-        pack_files,
-        object_hash,
-    )
-
-    with open(pack_file, "rb") as file:
-        file.seek(offset)
-
-        object_type, object_size = read_pack_object_header(file)
-
-        if object_type == 6:
-            raise NotImplementedError(
-                "OFS_DELTA objects are not supported yet."
-            )
-
-        if object_type == 7:
-            raise NotImplementedError(
-                "REF_DELTA objects are not supported yet."
-            )
-
-        object_type_map = {
-            1: "commit",
-            2: "tree",
-            3: "blob",
-            4: "tag",
-        }
-
-        object_type = object_type_map.get(object_type)
-
-        if object_type is None:
-            raise ValueError(
-                f"Unsupported packed object type."
-            )
-
-        decompressor = zlib.decompressobj()
-
-        compressed_data = file.read()
-        object_data = decompressor.decompress(
-            compressed_data
-        )
-
-        return object_type, object_data
-
-
-def read_ofs_delta_base(file) -> int:
-    byte = file.read(1)[0]
-
-    distance = byte & 0x7f
-
-    while byte & 0x80:
-        byte = file.read(1)[0]
-        distance += 1
-        distance = (distance << 7) | (byte & 0x7f)
-
-    return distance
-    
-
 def load_object(git_path: Path, 
                 object_hash: str) -> tuple[str, bytes]:
     """Load a Git object and return its type and body."""
@@ -349,9 +107,8 @@ def load_object(git_path: Path,
         return load_loose_object(git_path, object_hash)
 
     else: 
-        return load_packed_object(git_path, object_hash)
+        return pack.load_packed_object(git_path, object_hash)
     
-
 
 # ----- COMMIT OBJECTS -----
 
@@ -576,6 +333,3 @@ def load_blob(git_path: Path,blob_hash: str) -> bytes:
 def parse_blob_body(body: bytes) -> bytes:
     """Parse a blob object."""
     return body
-
-
-

@@ -1,88 +1,95 @@
 # GitRank
 
-> Understand Git by building Git from scratch.
+> **Understand Git by building Git from scratch.**
 
-GitRank is a Python project that parses Git repositories directly from the `.git` directory without executing Git commands.
+GitRank is an educational Python project that reads Git repositories directly from the `.git` directory instead of relying on commands such as `git log` or `git ls-tree`.
 
-Instead of relying on commands such as `git log` or `git ls-tree`, GitRank reads and interprets Git's internal object database to reconstruct repository information.
+It reconstructs Git objects, commit history, branch relationships, contributor statistics, and commit graphs from Git's internal storage.
 
-The long-term goal is to evolve GitRank into a lightweight repository analytics engine capable of analyzing contributors, repository history, commit relationships, and code activity.
+<p align="center">
+
+![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![Git](https://img.shields.io/badge/Git-Internals-F05032?style=for-the-badge&logo=git&logoColor=white)
+![Status](https://img.shields.io/badge/Status-Learning%20Project-22C55E?style=for-the-badge)
+
+</p>
 
 ---
 
-## Current Features
+## What GitRank Does
 
-### Repository Resolution
+GitRank reads Git's internal object database and turns it into information that can be explored from the terminal.
 
-- Validate Git repository paths
+```text
+.git
+ ├── HEAD
+ ├── refs
+ ├── objects
+ │    ├── loose objects
+ │    └── pack files
+ │         ├── .idx
+ │         └── .pack
+ │
+ └── Git history
+        ↓
+      GitRank
+        ↓
+  Analytics + Commit Graph
+```
+
+---
+
+## Features
+
+### Repository
+
 - Read and resolve `HEAD`
 - Resolve local branch references
-- Read branch commit hashes
 - Traverse history from multiple branch heads
+- Validate Git repository paths
 
-### Git Object Parsing
+### Git Objects
 
-- Locate Git objects using SHA-1 hashes
-- Read compressed Git objects
-- Decompress objects using zlib
-- Parse Git object headers
-- Detect object types:
+- Read loose Git objects
+- Read packed Git objects
+- Parse pack index (`.idx`) files
+- Locate objects inside packfiles
+- Parse packed object headers
+- Decompress packed objects using `zlib`
+- Resolve `OFS_DELTA`
+- Resolve `REF_DELTA`
+- Parse:
   - `commit`
   - `tree`
   - `blob`
-
-### Commit Parsing
-
-- Parse commit metadata
-- Parse commit messages
-- Parse parent commits
-- Support multiple parents for merge commits
-- Parse author information
-- Parse committer information
-- Convert Unix timestamps into readable dates
-
-### Tree Parsing
-
-- Parse Git tree objects
-- Detect files and directories
-- Recursively traverse repository trees
-- Reconstruct repository file paths
-
-### Blob Parsing
-
-- Load blob objects
-- Read file contents directly from Git objects
+  - `tag`
 
 ### Commit History
 
 - Traverse complete commit history
-- Traverse multiple parent relationships
-- Traverse history from multiple local branch heads
-- Use iterative DFS with a stack
-- Track visited commits to avoid duplicate processing
-- Build a commit-to-parent graph
-- Topologically order commits from children to parents
+- Support multiple parents
+- Detect merge commits
+- Track visited commits
+- Build commit-to-parent relationships
+- Topologically order commits
 
 ### Contributor Analytics
 
 - Count commits by contributor
-- Rank contributors by commit count
-- Identify commits belonging to a specific contributor
-- Generate contributor statistics
-- Identify merge commits authored by a contributor
-- Determine first and latest commits
-- Display first and latest commit messages
+- Rank contributors
+- Find commits made by a contributor
+- Show contributor profile information
+- Count merge commits
+- Show first and latest commits
+- Show first and latest commit messages
 
 ### Commit Graph
 
-- Build a commit graph from commit-parent relationships
-- Handle normal commits and merge commits
-- Track multiple parent relationships
-- Render commit history in the terminal
-- Display commit hashes
-- Display commit messages
-- Display commit authors
-- Display branch and merge relationships
+- Render commit history directly in the terminal
+- Show commit relationships
+- Show merge branches and joins
+- Display commit hash, author, and message
+- Use terminal colors to improve readability
 
 ### CLI
 
@@ -90,29 +97,56 @@ The long-term goal is to evolve GitRank into a lightweight repository analytics 
 python3 main.py -p <repository_path>
 ```
 
-Display statistics for a specific contributor:
+Show contributor statistics:
 
 ```bash
 python3 main.py -p <repository_path> -u <username>
 ```
 
+Show the full commit graph:
+
+```bash
+python3 main.py -p <repository_path> -g
+```
+
 ---
 
-## Example: Contributor Ranking
+## Example
+
+### GitRank Startup
+
+```text
+ ██████╗ ██╗████████╗██████╗  █████╗ ███╗   ██╗██╗  ██╗
+██╔════╝ ██║╚══██╔══╝██╔══██╗██╔══██╗████╗  ██║██║ ██╔╝
+██║  ███╗██║   ██║   ██████╔╝███████║██╔██╗ ██║█████╔╝
+██║   ██║██║   ██║   ██╔══██╗██╔══██║██║╚██╗██║██╔═██╗
+╚██████╔╝██║   ██║   ██║  ██║██║  ██║██║ ╚████║██║  ██╗
+ ╚═════╝ ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝
+
+                GitRank — Git Analytics Engine
+                        by bybhargav
+
+[██░░░░░░░░░░░░░░░░░░] 10% Validating repository
+[████████░░░░░░░░░░░░] 40% Reading commit history
+[██████████████░░░░░░] 70% Analyzing contributors
+[██████████████████░░] 90% Preparing contributor ranking
+[████████████████████] 100% Yeah. We cooked. 🔥
+```
+
+### Contributor Ranking
 
 ```text
 ------------- GitRank Statistics -----------
+
 Rank    Name                        Commits
 --------------------------------------------
-1       bybhargav                        22
+1       bybhargav                        26
 2       ManojKanakam                      2
 3       Basani Sai Raju                   1
 --------------------------------------------
 ```
 
----
-
-## Example: Contributor Profile
+### Contributor Profile
 
 ```text
 --------------------------------------------
@@ -120,46 +154,43 @@ Rank    Name                        Commits
 --------------------------------------------
 Name                : bybhargav
 Email               : ...
-Total Commits       : 22
+Total Commits       : 26
 Merge Commits       : 0
 First Commit        : 30-07-2026 17:21:36
-Last Commit         : 11-08-2026 13:23:01
+Last Commit         : 13-08-2026 23:40:36
 
 First Commit Message:
-Initial GitRank project
+  Initial GitRank project
 
 Last Commit Message:
-Fix commit history traversal for merge commits
+  intialised pack functions
 
 --------------------------------------------
 ```
 
----
-
-## Example: Commit Graph
+### Commit Graph
 
 ```text
 --------------- GitRank - Commit Graph ---------------
 
-* b678483  updated README.md
+* b678483  bybhargav  updated README.md
 |
-* 16a1c74  feat: add contributor user statistics
+* 16a1c74  bybhargav  feat: add contributor user statistics
 |
-* c33523f  Fix commit history traversal for merge commits
+* c33523f  bybhargav  Fix commit history traversal
 |
-* 77468ce  Fix commit history traversal for merge commits
+* 77468ce  bybhargav  Fix commit history traversal
 |
-* ab58d89  Merge pull request #1 from ManojKanakam/main
+* ab58d89  bybhargav  Merge pull request
 |\
-| * 51dc9a9  Contributor: Testing
-| * 14b6046  Contributor: Testing
+| * 51dc9a9  ManojKanakam  Contributor: Testing
+| | 
+| * 14b6046  ManojKanakam  Contributor: Testing
 |/
-* 94dab69  Refactor Git object loading and implement commit history traversal
-|
-* 3ef95cd  parsing trial 1
+* 94dab69  bybhargav  Refactor Git object loading
 ```
 
-The graph is built from Git's commit-parent relationships rather than from Git's command-line output.
+The terminal version uses colors for the commit node, hash, author, and message.
 
 ---
 
@@ -168,190 +199,212 @@ The graph is built from Git's commit-parent relationships rather than from Git's
 ```text
 GitRank/
 │
-├── main.py              # CLI entry point
-├── gitinfo.py           # Git object parsing and repository traversal
-├── gitanalytics.py      # Repository and contributor analytics
-├── validator.py         # Git repository validation
-├── tests/               # Tests
+├── main.py
+├── gitinfo.py
+├── gitpack.py
+├── gitanalytics.py
+├── progress.py
+├── validator.py
+├── tests/
 └── README.md
 ```
+
+### Main Modules
+
+| File | Purpose |
+|------|---------|
+| `main.py` | CLI entry point |
+| `gitinfo.py` | Repository, loose objects, commit/tree/blob parsing |
+| `gitpack.py` | Pack index and packfile parsing, delta resolution |
+| `gitanalytics.py` | Contributor analytics and commit graph |
+| `progress.py` | Terminal banner, colors, and progress display |
+| `validator.py` | Repository validation |
 
 ---
 
 ## How It Works
 
-GitRank reconstructs repository information by reading Git's internal object database.
-
-### Repository Resolution
+### Loose Objects
 
 ```text
-Repository
-    │
-    ▼
-   .git
-    │
-    ├── HEAD
-    │
-    └── refs/heads/
-           │
-           ▼
-      Branch Commit Hashes
-           │
-           ▼
-      Commit Traversal
+Object SHA-1
+    ↓
+.git/objects/xx/yyyy...
+    ↓
+zlib decompression
+    ↓
+Git object header
+    ↓
+object type + body
 ```
 
-GitRank can start traversal from multiple local branch heads.
-
-### Commit
+### Packed Objects
 
 ```text
-Commit
- ├── Tree
- │    │
- │    ▼
- │  Repository Files
- │
- └── Parent(s)
-      │
-      ▼
- Commit History
+Object SHA-1
+    ↓
+.idx file
+    ↓
+fan-out table
+    ↓
+binary search
+    ↓
+pack offset
+    ↓
+.pack file
+    ↓
+packed object
 ```
 
-A normal commit has one parent:
+### Delta Objects
 
 ```text
-A
-│
-B
-│
-C
+OFS_DELTA
+    ↓
+base object offset
+    ↓
+base object
+    ↓
+delta instructions
+    ↓
+reconstructed object
 ```
-
-A merge commit can have multiple parents:
 
 ```text
-    B
-   / \
-  C   D
-   \ /
-    E
+REF_DELTA
+    ↓
+base object SHA-1
+    ↓
+base object
+    ↓
+delta instructions
+    ↓
+reconstructed object
 ```
 
-GitRank traverses these relationships using an iterative depth-first traversal with a stack and a visited set.
+All object loading paths ultimately expose the same interface:
+
+```python
+(object_type, body)
+```
+
+That means the higher-level commit, tree, and blob logic does not need to care whether an object came from loose storage or a packfile.
 
 ---
 
 ## Architecture
 
 ```text
-                    Git Repository
-                          │
-                          ▼
-                    path_validator
-                          │
-                          ▼
-                   Branch References
-                          │
-                          ▼
-                 Commit History Walker
-                          │
-                          ▼
-                       Commits
-                          │
-             ┌────────────┴────────────┐
-             │                         │
-             ▼                         ▼
-    Contributor Analytics        Commit Graph
-             │                         │
-       ┌─────┴─────┐             ┌─────┴─────┐
-       │           │             │           │
-       ▼           ▼             ▼           ▼
-    Ranking     User Profile   Ordering   Visualization
+                     Git Repository
+                           │
+                           ▼
+                    Repository Resolver
+                           │
+                           ▼
+                     Object Loader
+                    /              \\
+                   /                \\
+          Loose Objects          Packed Objects
+               │                    │
+               │              ┌─────┴─────┐
+               │              │           │
+               │             .idx        .pack
+               │                          │
+               │                    Delta Resolution
+               └──────────────┬───────────┘
+                              ▼
+                         Git Objects
+                              │
+                ┌─────────────┼─────────────┐
+                │             │             │
+                ▼             ▼             ▼
+             Commits        Trees         Blobs
+                │
+                ▼
+         Commit History / DAG
+                │
+        ┌───────┴────────┐
+        ▼                ▼
+ Contributor Analytics  Graph Rendering
 ```
 
 ---
 
-## Roadmap
+## Current Status
 
-### Version 1
+### GitRank v1
 
-- [x] Read HEAD
-- [x] Resolve branch references
-- [x] Parse commit objects
-- [x] Parse tree objects
-- [x] Parse blob objects
-- [x] Walk repository tree
-- [x] Walk complete commit history
-- [x] Handle multiple commit parents
-- [x] Traverse multiple local branch heads
-- [x] Build commit graph
-- [x] Order commits topologically
-- [x] Render commit graph in terminal
+- [x] Repository validation
+- [x] `HEAD` resolution
+- [x] Local branch reference resolution
+- [x] Loose object parsing
+- [x] Packed object parsing
+- [x] Pack index (`.idx`) parsing
+- [x] Packfile (`.pack`) reading
+- [x] `OFS_DELTA`
+- [x] `REF_DELTA`
+- [x] Commit parsing
+- [x] Tree parsing
+- [x] Blob parsing
+- [x] Multi-parent commits
+- [x] Commit history traversal
 - [x] Contributor statistics
 - [x] Contributor ranking
 - [x] Contributor profile statistics
-- [x] CLI repository path argument
+- [x] Commit graph generation
+- [x] Topological commit ordering
+- [x] Colored terminal output
+- [x] Terminal progress display
+- [x] CLI repository argument
 - [x] CLI contributor argument
-- [ ] Repository statistics
-- [ ] Code churn metrics
-- [ ] Lines added / removed
-
-### Version 2
-
-- [ ] Branch analysis
-- [ ] File ownership analysis
-- [ ] Lines added / removed
-- [ ] Hotspot detection
-- [ ] Repository health report
-- [ ] Packed object support
-- [ ] Git index parsing
-- [ ] Advanced commit graph rendering
+- [x] CLI graph argument
 
 ---
 
-## Current Limitations
+## Future Ideas
 
-GitRank currently supports Git objects stored as loose objects inside:
+These are intentionally left for later versions:
 
-```text
-.git/objects/
-```
-
-Large repositories such as the Linux kernel commonly store objects inside packfiles:
-
-```text
-.git/objects/pack/
-├── pack-*.pack
-└── pack-*.idx
-```
-
-Packed objects are currently **not supported** by GitRank.
-
-As a result, GitRank works with repositories whose required objects are available as loose objects, but it cannot yet fully process repositories that rely on packed object storage.
-
-Packed-object support is planned for a future version.
+- Incremental repository cache
+- Repository-wide statistics
+- Branch analysis
+- Commit inspection
+- File ownership analysis
+- Lines added / removed
+- Code churn metrics
+- Hotspot detection
+- Repository health reports
+- More advanced graph rendering
+- Performance improvements for very large repositories
 
 ---
 
 ## Why This Project?
 
-GitRank is built as a systems programming project to understand how Git stores and traverses data internally.
+GitRank started as a simple idea:
 
-Instead of treating Git as a command-line tool, GitRank explores:
+> **Understand Git by building Git from scratch.**
+
+Instead of treating Git as a black-box command-line tool, the project explores how Git actually stores and connects data.
+
+The project covers:
 
 - Git object storage
-- Object compression
-- Commit graphs
-- Directed commit relationships
-- Tree structures
-- Blob storage
-- Repository traversal
-- Contributor analytics
-- Branch relationships
-- Merge commits
+- SHA-1 object lookup
+- zlib compression
+- pack indexes
+- packfiles
+- delta compression
+- commit DAGs
+- tree structures
+- blobs
+- branch relationships
+- merge commits
+- contributor analytics
 
-The project emphasizes learning Git's internal architecture by implementing its core concepts from scratch.
+The point is not to replace Git.
+
+The point is to understand it.
 
 ---
 
@@ -362,33 +415,42 @@ The project emphasizes learning Git's internal architecture by implementing its 
 - `zlib`
 - `datetime`
 - `argparse`
+- ANSI terminal escape codes
 
----
-
-## Future Vision
-
-GitRank aims to become a lightweight repository analytics tool capable of answering questions such as:
-
-- Who contributes the most?
-- What does an individual contributor work on?
-- Which files change most frequently?
-- Which developers own which files?
-- How does the repository evolve over time?
-- How active is the repository?
-- What does the commit graph look like?
-- How much code is being added or removed?
-- Which parts of the repository are hotspots?
+GitRank reconstructs repository history from Git's internal files rather than calling Git history commands.
 
 ---
 
 ## Disclaimer
 
-GitRank is an educational and experimental project created for learning,
-curiosity, and fun.
+GitRank is an educational and experimental project created for learning, curiosity, and fun.
 
-It is provided for legitimate development, research, and educational use.
-The author does not encourage or support using this project for malicious,
-illegal, abusive, or harmful activities.
+It is intended for legitimate development, research, and educational use. The project is not intended to support malicious, illegal, abusive, or harmful activity.
 
-Use GitRank at your own discretion. The author is not responsible for any
-damage, loss, misuse, or consequences resulting from the use of this project.
+Use GitRank at your own discretion. The author is not responsible for damage, loss, misuse, or other consequences resulting from use of the project.
+
+---
+
+## License
+
+MIT License
+
+Copyright (c) 2026 bybhargav
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files, to deal in the Software
+without restriction, including without limitation the rights to use, copy,
+modify, merge, publish, distribute, sublicense, and/or sell copies of the
+Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
